@@ -1,0 +1,39 @@
+<html>
+    <head>
+        <title>JSON - JSONP tests</title>
+        <!--Include jquery-->
+        <script src="http://code.jquery.com/jquery-1.8.2.min.js"></script>      
+        <script type="text/javascript">
+            $(function(){
+                    //DEF response        
+                    var data = {};
+                    data.title = "title";
+                    data.message = "message";
+                       
+             
+             //Handler on JSON anchor click                 
+             $('#select_link_JSON').click(function(e){
+                 
+                    e.preventDefault();
+                    //LOG
+                    console.log('select_link_JSON clicked');
+                   
+                   //JSON request     
+                    $.ajax({
+                        data: JSON.stringify(data),
+                        contentType: 'application/json',
+                        url: 'http://localhost:3000/endpointJSON',                      
+                        success: function(data) {
+                            console.log('success');
+                            console.log(JSON.stringify(data));
+                        }
+                    });
+                }); 
+
+            });
+        </script>
+    </head>
+    <body>
+        <div id="select_div_JSON"><a href="#" id="select_link_JSON">Test JSON</a></div>    
+    </body>
+</html>
