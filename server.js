@@ -1,17 +1,56 @@
-var request = require("request");
+var request = require("request-promise");
 
-const query = encodeURI("Quel est le solde du 15/01/2017 au 18/01/2017 ?");
+var app = require('express')();
+var http = require('http').Server(app);
+var io = require('socket.io')(http);
 
-var options = { method: 'get', url: `https://api.wit.ai/message?v=03/01/2018&q=${query}`, headers: {
-    Authorization: ' Bearer PK6TK63ZGFVNMXTJDN6IJ7H4VSRUUPQY' 
+let query;
+let connectionUseCase = false;
+let connectionCase = 1;
+let waitingForUserAnswer = false;
+let userAnswer;
+const token = ' Bearer PK6TK63ZGFVNMXTJDN6IJ7H4VSRUUPQY';
+
+app.get('/', function(req, res){
+  res.sendFile(__dirname + '/index.html');
+});
+
+io.on('connection', function(socket){
+  socket.on('chat message', function(msg){
+    io.emit('chat message', msg);
+    query = encodeURI(msg);
+    if(connectionUseCase === false){
+      console.log('case '+connectionCase);
+      queryBot(query);
+    } else {
+      if(waitingForUserAnswer === true){
+        queryBot(query).then(() => {
+          waitingForUserAnswer = false;
+          userAnswer === true ? connectionCase++ : null;
+          console.log('case '+connectionCase);
+          connection();
+          userAnswer = false;
+        });
+      }
+    }
+  });
+});
+
+http.listen(3000, function(){
+  console.log('listening on *:3000');
+});
+
+
+let lastAction;
+
+
+var queryBot = ((query) => {
+  var specificQuery = { method: 'get', url: `https://api.wit.ai/message?v=03/01/2018&q=${query}`, headers: {
+    Authorization: token 
 } };
-
-var values = new Map();
-
-request(options, function (error, response, body) {
+return request(specificQuery, function (error, response, body) {
+  var values = new Map();
   if (error) throw new Error(error);
-
-  
   console.log(body);
   var jsonBody = JSON.parse(body);
   var keys = Object.keys(jsonBody.entities);
@@ -19,35 +58,148 @@ request(options, function (error, response, body) {
   keys.forEach(element => {
     var ent = jsonBody.entities[element];
     ent.forEach(entity => {
-      if(entity.value){
-        values.set(element, entity.value);
-      } else {
-        var vals = [];
-        entity.values.forEach(val => {
-          vals.push(val.value);
-          values.set(element, vals);
-        })
-      }
+      collectValues(entity,element,values);
     })
   });
   console.log(values);
   if(values.has('intent')){
      var intent = values.get('intent');
-     switch(intent.value){
+     console.log(intent);
+     switch(intent){
        case 'consultation':
+        console.log(1);
         consultation(values);
        break;
+       case 'connection':
+       connectionUseCase = true;
+       console.log(2);
+       connection();
+       break;
+       case 'yes_no':
+       if(waitingForUserAnswer === true){ 
+        console.log(3);
+        yesNo(values);
+       } else {
+         io.emit('bot message', 'Veuillez poser une question.');
+       }
+       break;
+       default:
+       console.log(4);
+       if(waitingForUserAnswer === true){
+         io.emit('bot message', 'Je ne comprends pas votre réponse. (Oui/Non attendu)');
+       } else {
+        io.emit('bot message', 'Je ne comprends pas votre demande.');
+       }
+       break;
      }
+  } else {
+    if(waitingForUserAnswer === true){
+      io.emit('bot message', 'Je ne comprends pas votre réponse. (Oui/Non attendu)');
+    } else {
+     io.emit('bot message', 'Je ne comprends pas votre demande.');
+    }
   }
+});
 });
 
 var consultation = ((tabs) => {
+  console.log(tabs);
   if(tabs.has('solde') && tabs.has('today')){
     console.log('Le solde du jour est ');
-  } else if(tabs.has('solde') && tabs.has('fromTo')){
-    console.log('Le solde du '+tabs.get('fromTo').from+' au '+tabs.get('fromTo').to+' est ');
+    io.emit('chat message','Le solde actuel est de ');
+  } else if(tabs.has('solde') && tabs.has('from')){
+    console.log('Le solde du '+tabs.get('from')+' au '+tabs.get('to')+' est ');
   }
   if(tabs.has('ventes') && tabs.has('today')){
     console.log('Le nombre de vente du jour est ');
+  }
+});
+
+var collectValues = ((entity, element, values) => {
+  if(entity.value){
+    values.set(element, entity.value);
+  } else {
+    var vals = [];
+    entity.values.forEach(val => {
+      vals.push(val.value);
+      values.set(element, vals);
+    })
+  }
+   if(element === 'fromTo'){
+    if(entity.from) {         
+    values.set('from', entity.from.value);
+  } if(entity.to){
+    values.set('to', entity.to.value);
+  } 
+}
+});
+
+var connection = (()=>{
+  switch(connectionCase) {
+    case 1:
+    if(userAnswer === false) {
+      io.emit('bot message','Veuillez allumer tous vos appareils.');
+    }
+    io.emit('bot message','Tous vos appareils sont-ils allumés ?');
+    waitingForUserAnswer = true;
+    break;
+    case 2:
+    io.emit('bot message','Sur la tablette sélectionnez Bluetooth.');
+    io.emit('bot message','Le bluetooth est-il activé?')
+    waitingForUserAnswer = true;
+    break;
+    case 3:
+    if(userAnswer === true){
+      io.emit('bot message','Activez la recherche d\'appareil.');
+      io.emit('bot message','La liste des appareils s\'affiche-t-elle?');
+    } else {
+      io.emit('bot message','Activez le bluetooth.');
+      io.emit('bot message','Activez la recherche d\'appareil.');
+      io.emit('bot message','La liste des appareils s\'affiche-t-elle?');
+    }
+    waitingForUserAnswer = true;
+    break;
+    case 4:
+    if(userAnswer === true){
+      io.emit('bot message','Est-ce que MPOP est appairé?');
+    } else {
+      io.emit('bot message','Choississez le matériel dans la liste affichée. (MPOP pour tiroir caisse)');
+      io.emit('bot message','Le message "Appairé" doit apparaître sous le matériel MPOP.');
+      io.emit('bot message','Est-ce que MPOP est appairé?');
+      connectionCase++;
+    }
+    waitingForUserAnswer = true;
+    break;
+    case 5:
+    if(userAnswer === true){
+      io.emit('bot message','Votre appareil est correctement appairé!');
+      connectionCase = 1;
+    } else {
+      io.emit('bot message','Appuyez sur le bouton jaune sur un lecteur de carte.');
+      io.emit('bot message','Lancez la porteuse.');
+      io.emit('bot message','Activez la recheche sur la tablette.');
+      io.emit('bot message','Choisissez le lecteur dans la liste affichée.');
+      io.emit('bot message','Saisissez le code affiché sur la tablette puis validez.');
+      io.emit('bot message','Le message "Appareil appairé" apparait-il?');
+      waitingForUserAnswer = true;
+    }
+    break;
+    case 6:
+    if(userAnswer === true){
+      io.emit('bot message','Votre appareil est correctement appairé!');
+    } else {
+      io.emit('bot message', 'Il semble que votre souci soit d\'ordre matériel. Veuillez contacter l\'assistance technique.');
+    }
+    connectionCase = 1;
+    connectionUseCase = false;
+    break;
+  }
+});
+
+var yesNo = ((tabs) => {
+  if(tabs.has('oui')){
+    userAnswer = true;
+  } else {
+    userAnswer = false;
   }
 });
