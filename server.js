@@ -4,6 +4,11 @@ var app = require('express')();
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
 
+var Chat = require('./chat.js');
+
+
+
+
 let query;
 let connectionUseCase = false;
 let connectionCase = 1;
@@ -12,6 +17,9 @@ let userAnswer;
 let lastAction;
 let stopUseCase = false;
 const token = ' Bearer PK6TK63ZGFVNMXTJDN6IJ7H4VSRUUPQY';
+
+var chat = new Chat();
+console.log(chat.queryBot('Bonjour'));
 
 app.get('/', function (req, res) {
   res.sendFile(__dirname + '/index.html');
