@@ -1,8 +1,13 @@
-this.request = require("request-promise");
-this.token = ' Bearer PK6TK63ZGFVNMXTJDN6IJ7H4VSRUUPQY';;
+var server = require('./server.js');
+
+var request = require('request-promise');
+var app = server.app;
+var http = server.http;
+var io = server.io;
+var token = server.token;
+var waitingForUserAnswer = server.waitingForUserAnswer;
 
 function Chat() {
-
 };
 
 Chat.prototype.queryBot = ((query) => {
@@ -10,10 +15,10 @@ Chat.prototype.queryBot = ((query) => {
       method: 'get',
       url: `https://api.wit.ai/message?v=03/01/2018&q=${query}`,
       headers: {
-        Authorization: this.token
+        Authorization: token,
       }
     };
-    return this.request(specificQuery, function (error, response, body) {
+    return request(specificQuery, function (error, response, body) {
       var values = new Map();
       if (error) throw new Error(error);
       console.log(body);
@@ -42,14 +47,14 @@ Chat.prototype.queryBot = ((query) => {
           case 'connection':
             connectionUseCase = true;
             console.log(2);
-            if (waitingForUserAnswer === true) {
+            if (this.waitingForUserAnswer === true) {
               io.emit('bot message', 'Je ne comprends pas votre réponse. (Oui/Non attendu)');
             } else {
               connection();
             }
             break;
           case 'yes_no':
-            if (waitingForUserAnswer === true) {
+            if (this.waitingForUserAnswer === true) {
               console.log(3);
               yesNo(values);
             } else {
@@ -58,7 +63,7 @@ Chat.prototype.queryBot = ((query) => {
             break;
           case 'greetings':
             console.log(4);
-            if (waitingForUserAnswer === true) {
+            if (this.waitingForUserAnswer === true) {
               io.emit('bot message', 'Je ne comprends pas votre réponse. (Oui/Non attendu)');
             } else {
               io.emit('bot message', 'Bonjour! En quoi puis-je vous aider?');
@@ -72,7 +77,7 @@ Chat.prototype.queryBot = ((query) => {
             break;
           default:
             console.log(6);
-            if (waitingForUserAnswer === true) {
+            if (this.waitingForUserAnswer === true) {
               io.emit('bot message', 'Je ne comprends pas votre réponse. (Oui/Non attendu)');
             } else {
               io.emit('bot message', 'Je ne comprends pas votre demande.');
@@ -80,7 +85,7 @@ Chat.prototype.queryBot = ((query) => {
             break;
         }
       } else {
-        if (waitingForUserAnswer === true) {
+        if (this.waitingForUserAnswer === true) {
           io.emit('bot message', 'Je ne comprends pas votre réponse. (Oui/Non attendu)');
         } else {
           io.emit('bot message', 'Je ne comprends pas votre demande.');

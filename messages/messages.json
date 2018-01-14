@@ -1,0 +1,51 @@
+{
+    "messages": {
+        "common": {
+            "waitingForYesNo": "Je ne comprends pas votre réponse. (Oui/Non attendu)",
+            "waitingForQuestion": "Veuillez poser une question.",
+            "unknownResponse": "Je ne comprends pas votre demande."
+        },
+        "greetings": {
+            "greetings1":"Bonjour! En quoi puis-je vous aider?"
+        },
+        "stop":{
+            "stop1":"La conversation est finie?"
+        },
+        "reset":{
+            "reset1":"N'hésitez pas à poser une question."
+        },
+        "connection": {
+            "case1": {
+                "message1": "Veuillez allumer tous vos appareils.",
+                "message2": "Tous vos appareils sont-ils allumés ?"
+            },
+            "case2": {
+                "message1": "Sur la tablette sélectionnez Bluetooth.",
+                "message2": "Le bluetooth est-il activé?"
+            },
+            "case3": {
+                "message1": "Activez la recherche d'appareil.",
+                "message2": "La liste des appareils s'affiche-t-elle?",
+                "message3": "Activez le bluetooth."
+            },
+            "case4": {
+                "message1": "Est-ce que MPOP est appairé?",
+                "message2": "Choississez le matériel dans la liste affichée. (MPOP pour tiroir caisse)",
+                "message3": "Le message 'Appairé' doit apparaître sous le matériel MPOP."
+            },
+            "case5": {
+                "message1": "Votre appareil est correctement appairé!",
+                "message2": "Appuyez sur le bouton jaune sur un lecteur de carte.",
+                "message3": "Lancez la porteuse.",
+                "message4": "Activez la recheche sur la tablette.",
+                "message5": "Choisissez le lecteur dans la liste affichée.",
+                "message6": "Saisissez le code affiché sur la tabvarte puis validez.",
+                "message7": "Le message 'Appareil appairé' apparait-il?"
+            },
+            "case6": {
+                "message1": "Votre appareil est correctement appairé!",
+                "message2": "Il semble que votre souci soit d'ordre matériel. Veuillez contacter l'assistance technique."
+            }
+        }
+    }
+}

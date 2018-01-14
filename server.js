@@ -1,37 +1,38 @@
 var request = require("request-promise");
-
 var app = require('express')();
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
+var fs = require('fs');
+var query;
+var connectionUseCase = false;
+var connectionCase = 1;
+var waitingForUserAnswer = false;
+var userAnswer;
+var lastAction;
+var stopUseCase = false;
+var token = ' Bearer PK6TK63ZGFVNMXTJDN6IJ7H4VSRUUPQY';
+var messages = JSON.parse(fs.readFileSync('./messages/messages.json')).messages;
+var chatMessage = 'chat message';
+var botMessage = 'bot message';
 
-var Chat = require('./chat.js');
-
-
-
-
-let query;
-let connectionUseCase = false;
-let connectionCase = 1;
-let waitingForUserAnswer = false;
-let userAnswer;
-let lastAction;
-let stopUseCase = false;
-const token = ' Bearer PK6TK63ZGFVNMXTJDN6IJ7H4VSRUUPQY';
-
-var chat = new Chat();
-console.log(chat.queryBot('Bonjour'));
+// var Chat = require('./chat')
+// var chat = new Chat();
+// console.log(chat.queryBot('Bonjour'));
 
 app.get('/', function (req, res) {
   res.sendFile(__dirname + '/index.html');
 });
 
+http.listen(3000, function () {
+  console.log('listening on *:3000');
+});
+
 io.on('connection', function (socket) {
-  socket.on('chat message', function (msg) {
-    io.emit('chat message', msg);
+  socket.on(chatMessage, function (msg) {
+    io.emit(chatMessage, msg);
     query = encodeURI(msg);
     console.log(stopUseCase);
     if (connectionUseCase === false) {
-      console.log('case ' + connectionCase + 'default');
       queryBot(query);
     } else {
       if (waitingForUserAnswer === true) {
@@ -44,7 +45,7 @@ io.on('connection', function (socket) {
           } else if(!userAnswer && stopUseCase === true){
             waitingForUserAnswer = true;
           } else if(!userAnswer && stopUseCase === false){
-          
+            connection();
           }
           else if(userAnswer === true){
             waitingForUserAnswer = false;
@@ -60,10 +61,6 @@ io.on('connection', function (socket) {
       }
     }
   });
-});
-
-http.listen(3000, function () {
-  console.log('listening on *:3000');
 });
 
 var queryBot = ((query) => {
@@ -95,7 +92,7 @@ var queryBot = ((query) => {
         case 'consultation':
           console.log(1);
           if (waitingForUserAnswer === true) {
-            io.emit('bot message', 'Je ne comprends pas votre réponse. (Oui/Non attendu)');
+            io.emit(botMessage, messages.common.waitingForYesNo);
           } else {
             consultation(values);
           }
@@ -104,7 +101,7 @@ var queryBot = ((query) => {
           connectionUseCase = true;
           console.log(2);
           if (waitingForUserAnswer === true) {
-            io.emit('bot message', 'Je ne comprends pas votre réponse. (Oui/Non attendu)');
+            io.emit(botMessage, messages.common.waitingForYesNo);
           } else {
             connection();
           }
@@ -114,15 +111,15 @@ var queryBot = ((query) => {
             console.log(3);
             yesNo(values);
           } else {
-            io.emit('bot message', 'Veuillez poser une question.');
+            io.emit(botMessage, messages.common.waitingForQuestion);
           }
           break;
         case 'greetings':
           console.log(4);
           if (waitingForUserAnswer === true) {
-            io.emit('bot message', 'Je ne comprends pas votre réponse. (Oui/Non attendu)');
+            io.emit(botMessage, messages.common.waitingForYesNo);
           } else {
-            io.emit('bot message', 'Bonjour! En quoi puis-je vous aider?');
+            io.emit(botMessage, messages.greetings.greetings1);
           }
           break;
         case 'stop':
@@ -134,27 +131,28 @@ var queryBot = ((query) => {
         default:
           console.log(6);
           if (waitingForUserAnswer === true) {
-            io.emit('bot message', 'Je ne comprends pas votre réponse. (Oui/Non attendu)');
+            io.emit(botMessage, messages.common.waitingForYesNo);
           } else {
-            io.emit('bot message', 'Je ne comprends pas votre demande.');
+            io.emit(botMessage, messages.common.unknownResponse);
           }
           break;
       }
     } else {
       if (waitingForUserAnswer === true) {
-        io.emit('bot message', 'Je ne comprends pas votre réponse. (Oui/Non attendu)');
+        io.emit(botMessage, messages.common.waitingForYesNo);
       } else {
-        io.emit('bot message', 'Je ne comprends pas votre demande.');
+        io.emit(botMessage, messages.common.unknownResponse);
       }
     }
   });
 });
 
+// TODO get process
 var consultation = ((tabs) => {
   console.log(tabs);
   if (tabs.has('solde') && tabs.has('today')) {
     console.log('Le solde du jour est ');
-    io.emit('chat message', 'Le solde actuel est de ');
+    io.emit(chatMessage, 'Le solde actuel est de ');
   } else if (tabs.has('solde') && tabs.has('from')) {
     console.log('Le solde du ' + tabs.get('from') + ' au ' + tabs.get('to') + ' est ');
   }
@@ -173,6 +171,7 @@ var collectValues = ((entity, element, values) => {
       values.set(element, vals);
     })
   }
+  // Specific fromTo (Datetime)
   if (element === 'fromTo') {
     if (entity.from) {
       values.set('from', entity.from.value);
@@ -184,61 +183,62 @@ var collectValues = ((entity, element, values) => {
 });
 
 var connection = (() => {
+  var connectionMessages = messages.connection;
   switch (connectionCase) {
     case 1:
       if (userAnswer === false) {
-        io.emit('bot message', 'Veuillez allumer tous vos appareils.');
+        io.emit(chatMessage, connectionMessages.case1.message1);
       }
-      io.emit('bot message', 'Tous vos appareils sont-ils allumés ?');
+      io.emit(chatMessage, connectionMessages.case1.message2);
       waitingForUserAnswer = true;
       break;
     case 2:
-      io.emit('bot message', 'Sur la tablette sélectionnez Bluetooth.');
-      io.emit('bot message', 'Le bluetooth est-il activé?')
+      io.emit(botMessage, connectionMessages.case2.message1);
+      io.emit(botMessage, connectionMessages.case2.message2)
       waitingForUserAnswer = true;
       break;
     case 3:
       if (userAnswer === true) {
-        io.emit('bot message', 'Activez la recherche d\'appareil.');
-        io.emit('bot message', 'La liste des appareils s\'affiche-t-elle?');
+        io.emit(botMessage, connectionMessages.case3.message1);
+        io.emit(botMessage, connectionMessages.case3.message2);
       } else {
-        io.emit('bot message', 'Activez le bluetooth.');
-        io.emit('bot message', 'Activez la recherche d\'appareil.');
-        io.emit('bot message', 'La liste des appareils s\'affiche-t-elle?');
+        io.emit(botMessage,  connectionMessages.case3.message3);
+        io.emit(botMessage,  connectionMessages.case3.message1);
+        io.emit(botMessage,  connectionMessages.case3.message2);
       }
       waitingForUserAnswer = true;
       break;
     case 4:
       if (userAnswer === true) {
-        io.emit('bot message', 'Est-ce que MPOP est appairé?');
+        io.emit(botMessage, connectionMessages.case4.message1);
       } else {
-        io.emit('bot message', 'Choississez le matériel dans la liste affichée. (MPOP pour tiroir caisse)');
-        io.emit('bot message', 'Le message "Appairé" doit apparaître sous le matériel MPOP.');
-        io.emit('bot message', 'Est-ce que MPOP est appairé?');
+        io.emit(botMessage, connectionMessages.case4.message2);
+        io.emit(botMessage, connectionMessages.case4.message3);
+        io.emit(botMessage, connectionMessages.case4.message1);
         connectionCase++;
       }
       waitingForUserAnswer = true;
       break;
     case 5:
       if (userAnswer === true) {
-        io.emit('bot message', 'Votre appareil est correctement appairé!');
+        io.emit(botMessage, connectionMessages.case5.message1);
         connectionCase = 1;
         connectionUseCase = false;
       } else {
-        io.emit('bot message', 'Appuyez sur le bouton jaune sur un lecteur de carte.');
-        io.emit('bot message', 'Lancez la porteuse.');
-        io.emit('bot message', 'Activez la recheche sur la tablette.');
-        io.emit('bot message', 'Choisissez le lecteur dans la liste affichée.');
-        io.emit('bot message', 'Saisissez le code affiché sur la tablette puis validez.');
-        io.emit('bot message', 'Le message "Appareil appairé" apparait-il?');
+        io.emit(botMessage, connectionMessages.case5.message2);
+        io.emit(botMessage, connectionMessages.case5.message3);
+        io.emit(botMessage, connectionMessages.case5.message4);
+        io.emit(botMessage, connectionMessages.case5.message5);
+        io.emit(botMessage, connectionMessages.case5.message6);
+        io.emit(botMessage, connectionMessages.case5.message7);
         waitingForUserAnswer = true;
       }
       break;
     case 6:
       if (userAnswer === true) {
-        io.emit('bot message', 'Votre appareil est correctement appairé!');
+        io.emit(botMessage, connectionMessages.case6.message1);
       } else {
-        io.emit('bot message', 'Il semble que votre souci soit d\'ordre matériel. Veuillez contacter l\'assistance technique.');
+        io.emit(botMessage, connectionMessages.case6.message2);
       }
       connectionCase = 1;
       connectionUseCase = false;
@@ -257,7 +257,7 @@ var yesNo = ((tabs) => {
 
 var stop = (() => {
   console.log('stop method');
-  io.emit('bot message', 'La conversation est finie?');
+  io.emit(botMessage, messages.stop.stop1);
 });
 
 var reset = (() => {
@@ -266,5 +266,20 @@ var reset = (() => {
   connectionUseCase = false;
   userAnswer = false;
   waitingForUserAnswer = false;
-  io.emit('bot message', 'N\'hésitez pas à poser une question.');
+  io.emit(botMessage, messages.reset.reset1);
 });
+
+module.exports.server = {
+  request : request,
+  app : app,
+  http : http,
+  io : io,
+  query : query,
+  connectionUseCase : connectionUseCase,
+  connectionCase : connectionCase,
+  waitingForUserAnswer : waitingForUserAnswer,
+  userAnswer : userAnswer,
+  lastAction : lastAction,
+  stopUseCase : stopUseCase,
+  token : token,
+}
